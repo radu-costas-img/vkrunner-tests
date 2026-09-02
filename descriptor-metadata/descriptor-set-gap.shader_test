@@ -1,0 +1,46 @@
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+
+/* Test that validates pco_descriptor_set_data.used is working correctly.
+ * Set 0 and 2 are used by the shader and set 1 is specifically left out.
+ * The compiler should correctly report the length of the used set data 
+ * without the unused set interfering with address/length calculation.
+ */
+layout(set = 0, binding = 0, std430) buffer set0_block {
+        uint data0[];
+};
+
+/* set = 1 - no SSBO . */
+
+layout(set = 2, binding = 0, std430) buffer set2_block {
+        uint data2[];
+};
+
+layout(set = 3, binding = 0, std430) buffer out_block {
+        uint len0;
+        uint len2;
+};
+
+void
+main()
+{
+        len0 = data0.length();
+        len2 = data2.length();
+}
+
+[test]
+# set 0, binding 0: 4 * 6  = 24 bytes  -> length() == 6
+ssbo 0:0 24
+# set 2, binding 0: 4 * 17 = 68 bytes  -> length() == 17
+ssbo 2:0 68
+
+ssbo 3:0 subdata uint 0 0
+ssbo 3:0 subdata uint 4 0
+
+compute 1 1 1
+
+probe ssbo uint 3:0 0 == 6
+probe ssbo uint 3:0 4 == 17

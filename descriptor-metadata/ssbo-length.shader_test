@@ -1,0 +1,31 @@
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+/* Simple test to verify that the length of the descriptor is correctly
+ * handled by the driver when the length is not statically initialized.
+ */
+layout(binding = 3, std430) buffer in_block {
+        vec4 header;
+        uint data[];
+};
+
+layout(binding = 4, std430) buffer out_block {
+        uint result;
+};
+
+void
+main()
+{
+        result = data.length();
+}
+
+[test]
+# 16 (header) + 4 * 40 = 176 bytes => data.length() == 40
+ssbo 3 176
+ssbo 4 subdata uint 0 0
+
+compute 1 1 1
+
+probe ssbo uint 4 0 == 40

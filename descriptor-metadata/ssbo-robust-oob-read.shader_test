@@ -1,0 +1,37 @@
+[require]
+robustBufferAccess
+
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+/* Test that verifies that reading an OOB index when robustBufferAccess is 
+ * enabled makes the compiler clamp the offset to 0. 
+ */
+
+layout(binding = 3, std430) buffer in_block {
+        uint data[4];
+};
+
+layout(binding = 4, std430) buffer out_block {
+        uint result;
+};
+
+void
+main()
+{
+        uint idx = gl_WorkGroupID.x + 10u;
+        result = data[idx];
+}
+
+[test]
+ssbo 3 subdata uint 0  0xdeadbeef
+ssbo 3 subdata uint 4  0xdeadbeef
+ssbo 3 subdata uint 8  0xdeadbeef
+ssbo 3 subdata uint 12 0xdeadbeef
+
+ssbo 4 subdata uint 0 0xcafecafe
+
+compute 1 1 1
+
+probe ssbo uint 4 0 == 0xdeadbeef

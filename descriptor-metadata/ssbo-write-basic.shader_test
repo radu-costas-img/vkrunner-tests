@@ -1,0 +1,29 @@
+[compute shader]
+#version 450
+
+/* Basic compute shader that writes an ssbo and tests for data validity. */
+
+layout(local_size_x = 1) in;
+
+layout(binding = 3, std430) buffer block {
+        uint data[4];
+};
+
+void
+main()
+{
+        data[0] = 0x1;
+        data[1] = 0x2;
+        data[2] = 0x3;
+        data[3] = 0x4;
+}
+
+[test]
+ssbo 3 16
+
+compute 1 1 1
+
+probe ssbo uint 3 0  == 0x1
+probe ssbo uint 3 4  == 0x2
+probe ssbo uint 3 8  == 0x3
+probe ssbo uint 3 12 == 0x4

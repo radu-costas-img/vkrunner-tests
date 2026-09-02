@@ -1,0 +1,33 @@
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+/* Test that validates pco_push_const_data.range - read a push constant
+ * value at the end of the push constant block and verify that the value is
+ * correct. This verifies the correct offset for the value is calculated.
+ */
+layout(push_constant) uniform pc_block {
+        layout(offset = 0)  vec4 unused0;
+        layout(offset = 16) vec4 unused1;
+        layout(offset = 32) uint value;
+};
+
+layout(binding = 4, std430) buffer out_block {
+        uint result;
+};
+
+void
+main()
+{
+        result = value;
+}
+
+[test]
+push uint 32 0x12345678
+
+ssbo 4 subdata uint 0 0
+
+compute 1 1 1
+
+probe ssbo uint 4 0 == 0x12345678

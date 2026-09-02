@@ -1,0 +1,38 @@
+[require]
+robustBufferAccess
+
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+/* Same basic SSBO write as ssbo-write-basic-compute.shader_test, but now with
+ * robustBufferAccess enabled. 
+ * Test attempts to write an OOB value into a descriptor and verifies that the 
+ * write does not corrupt any data within the descriptor as robustBufferAccess 
+ * makes OOB writes be discarded.
+ */
+layout(binding = 3, std430) buffer block {
+        uint data[4];
+        uint end;
+};
+
+void
+main()
+{
+        uint idx = gl_WorkGroupID.x + 10u;
+        data[idx] = 0xdeadbeef;
+}
+
+[test]
+ssbo 3 subdata uint 0  0x0
+ssbo 3 subdata uint 4  0x0
+ssbo 3 subdata uint 8  0x0
+ssbo 3 subdata uint 12 0x0
+ssbo 3 subdata uint 16 0xcafef00d
+
+compute 1 1 1
+
+# The out-of-bounds store must not have corrupted the end value
+# located right after the array.
+probe ssbo uint 3 16 == 0xcafef00d

@@ -1,0 +1,40 @@
+[require]
+robustBufferAccess
+
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+/* Test that OOB reads do not fail when robustBufferAccess is enabled, but 
+ * rather return the data from the start address (index 0) of the descriptor. 
+ */
+layout(binding = 3, std140) uniform block {
+        uint values[4];
+};
+
+layout(binding = 4, std430) buffer out_block {
+        uint result;
+};
+
+void
+main()
+{
+        uint idx = gl_WorkGroupID.x + 10u;
+        result = values[idx];
+}
+
+[test]
+ubo layout std140
+ubo 3 subdata uint 0  0xdeadbeef
+ubo 3 subdata uint 16 0
+ubo 3 subdata uint 32 0
+ubo 3 subdata uint 48 0
+
+ssbo 4 subdata uint 0 0xcafef00d
+
+compute 1 1 1
+
+# A robust out-of-bounds UBO read must return 0, not adjacent/poison
+# data, proving the UBO's size metadata was consulted.
+probe ssbo uint 4 0 == 0xdeadbeef

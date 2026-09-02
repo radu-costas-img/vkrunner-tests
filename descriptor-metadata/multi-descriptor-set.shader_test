@@ -1,0 +1,55 @@
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+
+/* Test that verifies descriptor-set packing/unpacking.
+ * Declares 3 different SSBOs with the same binding but different sets.
+ * If the set/binding packing or base-reg lookup are wrong, SSBO
+ * sizes/addresses could alias between sets.
+ * This verifies that each set's size reporting is correct.
+ */
+layout(set = 0, binding = 0, std430) buffer set0_block {
+        uint data0[];
+};
+
+layout(set = 1, binding = 0, std430) buffer set1_block {
+        uint data1[];
+};
+
+layout(set = 2, binding = 0, std430) buffer set2_block {
+        uint data2[];
+};
+
+layout(set = 3, binding = 0, std430) buffer out_block {
+        uint len0;
+        uint len1;
+        uint len2;
+};
+
+void
+main()
+{
+        len0 = data0.length();
+        len1 = data1.length();
+        len2 = data2.length();
+}
+
+[test]
+# set 0, binding 0: 4 * 5  = 20 bytes  -> length() == 5
+ssbo 0:0 20
+# set 1, binding 0: 4 * 15 = 60 bytes  -> length() == 15
+ssbo 1:0 60
+# set 2, binding 0: 4 * 30 = 120 bytes -> length() == 30
+ssbo 2:0 120
+
+ssbo 3:0 subdata uint 0 0
+ssbo 3:0 subdata uint 4 0
+ssbo 3:0 subdata uint 8 0
+
+compute 1 1 1
+
+probe ssbo uint 3:0 0 == 5
+probe ssbo uint 3:0 4 == 15
+probe ssbo uint 3:0 8 == 30

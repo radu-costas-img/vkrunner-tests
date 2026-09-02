@@ -1,0 +1,34 @@
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+/* Test for implicit size correctness.
+ * Length of the descriptor array component should be the highest index 
+ * "touched" by the initialization, without any explicit initialization. 
+ */
+layout(binding = 3, std430) buffer in_block {
+        vec4 header;
+        uint data[];
+};
+
+layout(binding = 4, std430) buffer out_block {
+        uint result;
+};
+
+void
+main()
+{
+        result = data.length();
+}
+
+[test]
+# Writing a uint at offset 92 implies a minimum buffer size of 
+# 96 bytes -> data = (96 - 16) / 4 = 20 elements.
+ssbo 3 subdata uint 92 0
+
+ssbo 4 subdata uint 0 0
+
+compute 1 1 1
+
+probe ssbo uint 4 0 == 20

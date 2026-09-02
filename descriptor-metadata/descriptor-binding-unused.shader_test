@@ -1,0 +1,38 @@
+[compute shader]
+#version 450
+
+layout(local_size_x = 1) in;
+
+/* Test to verify that an unused binding in a descriptor set does not
+ * interfere with the used binding.
+ */
+layout(set = 0, binding = 0, std430) buffer set0_unused_block {
+        uint unused_data[];
+};
+
+layout(set = 0, binding = 1, std430) buffer set0_used_block {
+        uint used_data[];
+};
+
+layout(set = 1, binding = 0, std430) buffer out_block {
+        uint len_used;
+};
+
+void
+main()
+{
+        /* binding 0 is deliberately never touched. */
+        len_used = used_data.length();
+}
+
+[test]
+# set 0, binding 0 (unused by shader): 4 * 3 = 12 bytes.
+ssbo 0:0 12
+# set 0, binding 1 (used by shader): 4 * 22 = 88 bytes -> length() == 22
+ssbo 0:1 88
+
+ssbo 1:0 subdata uint 0 0
+
+compute 1 1 1
+
+probe ssbo uint 1:0 0 == 22
